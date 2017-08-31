@@ -6,7 +6,7 @@ public class Game {
     public static final int PIPE_DELAY = 100;
     public static int POPSIZE = 200; //Amount of network and birds
     
-    private Neat neat = new Neat(POPSIZE, 2, 2);//Initializes neat
+    private Neat neat = new Neat(POPSIZE, 4, 2);//Initializes neat
     private float fitness;//Fitness is increased every frame
     private static int MAX_FITNESS = 1000;//Max fitness of the networks if birds make it
     private int deadCount;//Keeps track of the amount of dead birds
@@ -71,9 +71,11 @@ public class Game {
         checkForCollisions();    
         
 		for(int i = 0; i < POPSIZE; i++){
-			float [] input = new float[2];//Input[] for the networks
-			input[0] = birds[i].x - pipes.get(0).x; //Horizontal distance to pipes
-			input[1] = birds[i].y - pipes.get(0).y; //Vertical distance to pipes
+			float [] input = new float[4];//Input[] for the networks
+			input[0] = birds[i].x; //Horizontal position of the bird
+			input[1] = birds[i].y; //Vertical position of the bird
+			input[2] = pipes.get(0).x; //Horizontal position of the pipe
+			input[3] = pipes.get(0).y; //Vertical position of the pipe
 			if(neat.population[i].isActive){//Activates network if the network is active
 				neat.population[i].networkActivate(input);
 			}
