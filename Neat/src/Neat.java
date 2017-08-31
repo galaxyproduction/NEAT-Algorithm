@@ -62,7 +62,7 @@ public class Neat {
 				synA.in = findNeuron(synA.in.id, childNeurons); //-to the newly created Neurons in childNeurons
 				synA.out = findNeuron(synA.out.id, childNeurons);
 			}
-			for(Synapse synB : parentA.synapses){  //Sets the neuron reference in the 'In' and Out'- 
+			for(Synapse synB : parentB.synapses){  //Sets the neuron reference in the 'In' and Out'- 
 				synB.in = findNeuron(synB.in.id, childNeurons);//-to the newly created Neurons in childNeurons
 				synB.out = findNeuron(synB.out.id, childNeurons);
 			}
