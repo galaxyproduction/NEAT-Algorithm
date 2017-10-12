@@ -141,6 +141,37 @@ public class Neat {
 		}
 	}	
 	
+	float distComp(Network a, Network b){ //Returns the distance of compatibility between two networks
+		float c1 = 1f; //Coefficent of disjointed and excess genes
+		float c3 = 0.4f; //Coefficent of average weight between matching genes
+		
+		int disjoint = 0; //Nums of different genes
+		float avgWeightDiff = 0; //Average of the weight differences
+		int N = (a.synapses.size() > b.synapses.size()) ? a.synapses.size() : b.synapses.size(); //Synapse size of the larger genome
+		int matchingGenes = 0;
+		
+		Network larger = (a.synapses.size() > b.synapses.size()) ? a : b;
+		Network smaller = (a.synapses.size() < b.synapses.size()) ? a : b;
+		
+		for(int i = 0; i < larger.synapses.size(); i++){
+			if(i < smaller.synapses.size()){ //Adds all disjointed genes and calcs avgWeightDiff
+				if(larger.synapses.get(i).innovationNum == smaller.synapses.get(i).innovationNum){ //Checks if same synapse
+					avgWeightDiff += larger.synapses.get(i).weight - smaller.synapses.get(i).weight;
+					matchingGenes++;
+				}else{ //Adds to disjoint if not the same synapse
+					disjoint++;
+				}
+			}else{ //Adds all excess genes in the larger network
+				disjoint++;
+			}
+		}
+		
+		avgWeightDiff /= matchingGenes;
+		
+		float dist = (c1 * disjoint) / N + c3 * avgWeightDiff; //Distance of compatibility
+		return dist;
+	}
+	
 	Network selectReject(){ //Selects a parent based on its fitness
 		Network parent = null;
 		while(parent == null){
