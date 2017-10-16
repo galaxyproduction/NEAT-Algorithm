@@ -1,11 +1,9 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 
 public class Neat {
 	Random rnd = new Random();
 	Network[] population; //Holds all Networks
+	ArrayList<ArrayList<Network>> species = new ArrayList<ArrayList<Network>>(); //Holds the networks for each species, each inner ArrayList is a new species
 	
 	int generation = 0;
 	int neuronId = 0; //Keeps track of the Id
@@ -30,6 +28,8 @@ public class Neat {
 	
 	public void runNeat(){ //Runs the genetic algorithm
 		recalcFitness();
+		speciation();
+		fitnessSharing();
 		crossover();
 		mutate();
 		generation++;
@@ -75,15 +75,15 @@ public class Neat {
 
 			for(Synapse synB : parentB.synapses){//Adds all Synapses from parentB that are not in parentA
 				boolean add = true;
-					for(Synapse synC : childSynapses){
-						if(synB.innovationNum == synC.innovationNum){//50% chance to change the new synape's attributes to parentB's
-							add = false;
-							if(0.5 > rnd.nextFloat()){
-								synC.weight = synB.weight;
-								synC.enabled = synB.enabled;
-							}
+				for(Synapse synC : childSynapses){
+					if(synB.innovationNum == synC.innovationNum){//50% chance to change the new synape's attributes to parentB's
+						add = false;
+						if(0.5 > rnd.nextFloat()){
+							synC.weight = synB.weight;
+							synC.enabled = synB.enabled;
 						}
 					}
+				}
 				if(add){
 					childSynapses.add(new Synapse(synB));
 				}
@@ -139,7 +139,103 @@ public class Neat {
 				}
 			}
 		}
-	}	
+	}
+	
+	void speciation(){
+		float incompatThresh = 3f;
+		float killPercent = 0.05f; //Kills n% of the lowest performing population 
+		
+		for(Network n : population){
+			boolean addToSpecies = false; //Checks if network was added to a species
+			for(int i = 0; i < species.size(); i++){
+				if(distComp(n, species.get(i).get(0)) < incompatThresh){ //Check if the distance is less than the Compatibility Threshhold
+					species.get(i).add(n);
+					addToSpecies = true;
+					break;
+				}
+			}
+			
+			if(!addToSpecies){ //If network wasn't add to an existing species a new one is created
+				species.add(new ArrayList<Network>());
+				species.get(species.size()-1).add(n);
+			}
+		}
+		
+		for(int j = 0; j < species.size(); j++){ //Kills the lowest prefroming genomes
+			int killAmount = (species.get(j).size() * killPercent < 1) ? 1 : (int)(species.get(j).size() * killPercent); //Amount of genomes to kill
+			
+			Collections.sort(species.get(j));
+			
+			for(int k = 0; k < killAmount; k++){
+				species.get(j).remove(k);
+			}
+		}
+	}
+	
+	void fitnessSharing(){
+		float[] speciesFit = new float[species.size()];
+		int[] speciesReproduce = new int[species.size()];
+		float N = 0;
+		for(int i = 0; i < species.size(); i++){
+			speciesFit[i] = adjustedFitness(species.get(i));
+			N += speciesFit[i];
+		}
+		
+		for(int j = 0; j < species.size(); j++){
+			speciesReproduce[j] = (int)(speciesFit[j] / N);
+		}
+	}
+	
+	float adjustedFitness(ArrayList<Network> speciesO){
+		float sum = 0;
+		for(int i = 0; i < speciesO.size(); i++){
+			sum += speciesO.get(i).fitness / speciesO.size();
+		}
+		return sum;
+	}
+	
+	float distComp(Network a, Network b){ //Returns the distance of compatibility between two networks
+		float c1 = 1f; //Coefficent of disjointed and excess genes
+		float c3 = 0.4f; //Coefficent of average weight between matching genes
+		
+		int disjoint = 0; //Nums of different genes
+		float avgWeightDiff = 0; //Average of the weight differences
+		int N;  //Synapse size of the larger genome
+		int matchingGenes = 0;
+		
+		Network larger;
+		Network smaller;
+		
+		if(a.synapses.size() > b.synapses.size()){
+			larger = a;
+			smaller = b;
+			N = a.synapses.size();
+		}else{
+			larger = b;
+			smaller = a;
+			N = b.synapses.size();
+		}
+		
+		for(int i = 0; i < larger.synapses.size(); i++){
+			if(i < smaller.synapses.size()){ //Adds all disjointed genes and calcs avgWeightDiff
+				if(larger.synapses.get(i).innovationNum == smaller.synapses.get(i).innovationNum){ //Checks if same synapse
+					avgWeightDiff += larger.synapses.get(i).weight - smaller.synapses.get(i).weight;
+					matchingGenes++;
+				}else{ //Adds to disjoint if not the same synapse
+					disjoint++;
+				}
+			}else{ //Adds all excess genes in the larger network
+				disjoint++;
+			}
+		}
+		
+		
+		avgWeightDiff /= matchingGenes;
+		
+		float dist = (c1 * disjoint) / N + c3 * avgWeightDiff; //Distance of compatibility
+		System.out.println(dist);
+		return dist;
+	}
 	
 	Network selectReject(){ //Selects a parent based on its fitness
 		Network parent = null;
