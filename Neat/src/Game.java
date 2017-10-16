@@ -1,4 +1,5 @@
 import java.awt.event.KeyEvent;
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class Game {
@@ -10,6 +11,7 @@ public class Game {
     private float fitness;//Fitness is increased every frame
     private static int MAX_FITNESS = 1000;//Max fitness of the networks if birds make it
     private int deadCount;//Keeps track of the amount of dead birds
+    int pipeNum = 0;
     
     private Boolean paused;
 
@@ -49,6 +51,7 @@ public class Game {
         	birds[i] = new Bird();
         }
         pipes = new ArrayList<Pipe>();
+        pipeNum = 0;
     }
 
     public void update() {
@@ -70,12 +73,20 @@ public class Game {
         movePipes();
         checkForCollisions();    
         
+		if(pipes.get(pipeNum).x == birds[0].x - 30){
+			if(pipeNum == 2){
+				pipeNum = 0;
+			}else{
+				pipeNum = 2;
+			}
+		}
+
 		for(int i = 0; i < POPSIZE; i++){
 			float [] input = new float[4];//Input[] for the networks
 			input[0] = birds[i].x; //Horizontal position of the bird
 			input[1] = birds[i].y; //Vertical position of the bird
-			input[2] = pipes.get(0).x; //Horizontal position of the pipe
-			input[3] = pipes.get(0).y; //Vertical position of the pipe
+			input[2] = pipes.get(pipeNum).x; //Horizontal position of the pipe
+			input[3] = pipes.get(pipeNum).y - 100; //Vertical position of the pipe
 			if(neat.population[i].isActive){//Activates network if the network is active
 				neat.population[i].networkActivate(input);
 			}
@@ -91,7 +102,7 @@ public class Game {
 			}
 		}
 		
-		if(deadCount == POPSIZE || fitness == MAX_FITNESS){//If all birds are dead, run the genetic algorithm, then restart
+		if(deadCount == POPSIZE){//If all birds are dead, run the genetic algorithm, then restart
 			neat.runNeat();
 			restart();
 		}
