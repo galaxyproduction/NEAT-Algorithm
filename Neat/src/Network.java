@@ -1,6 +1,7 @@
 import java.util.ArrayList;
+import java.util.Comparator;
 
-public class Network{
+public class Network implements Comparable<Network>{
 	Neat neat;
 	
 	int inputCount;
@@ -42,7 +43,7 @@ public class Network{
 			neurons.get(i).neuronActivate();
 			activatedCount++;
 		}
-		int override = 0;//Check to keep from infinite loop. 
+
 		while(activatedCount != neurons.size()){ //Runs until all Neurons have activated
 			for(Neuron n : neurons){
 				if(n.currentInputCount >= n.totalInputCount && !n.hasActivated){ //If all of the neurons inputs have fired and it hasn't activated, then activate
@@ -50,12 +51,6 @@ public class Network{
 					activatedCount++;
 				}
 			}
-			
-			if(override == 1000){
-				setFitness(0);//Network is invalid and fitness set to 0
-				break;
-			}
-			override++;
 		}
 		
 		int out = 0; //Used to find the highest output
@@ -65,6 +60,10 @@ public class Network{
 			}
 		}
 		output = out;//Sets output to highest output
+	}
+	
+	public int compareTo(Network a){
+		return (int)(this.fitness - a.fitness);
 	}
 	
 	void printNetworkGeno(){//Prints the phenotype of all Neurons and Synapses, used mainly for debugging
