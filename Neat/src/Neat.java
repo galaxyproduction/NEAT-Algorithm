@@ -11,6 +11,9 @@ public class Neat {
 	
 	float maxFitness; //Used to scale network's fitness between 0 and 1
 	
+	float max = 0;
+	float min = 200;
+	
 	//Percentages of mutating  
 	float mutateWeight = 0.6f;
 	float mutateNeuron = 0.05f;
@@ -30,68 +33,63 @@ public class Neat {
 		recalcFitness();
 		speciation();
 		fitnessSharing();
-		crossover();
 		mutate();
 		generation++;
 		System.out.println("Generation: "+ generation);
 	}
 	
-	void crossover(){ //Crossover networks and refill population[]
-		Network[] popCopy = new Network[population.length]; //Used to hold breed networks 
-		for(int i = 0; i < population.length; i++){
-			Network parentA = selectReject();//Selects parents based on fitness
-			Network parentB = selectReject();//Selects parents based on fitness
-			
-			ArrayList<Neuron> childNeurons = new ArrayList<Neuron>(); //Child Neurons for new Network
-			for(Neuron neuronA : parentA.neurons){ //Adds all Neurons from parentA
-				childNeurons.add(new Neuron(neuronA.type, neuronA.id));
-			}
-			for(Neuron neuronB : parentB.neurons){//Adds all neurons from parentB that are not in parentA
-				boolean addNeuron = true;
-				for(Neuron neuronChild : childNeurons){
-					if(neuronB.id == neuronChild.id){
-						addNeuron = false;
-					}
-				}
-				if(addNeuron){
-					childNeurons.add(new Neuron(neuronB.type, neuronB.id));
-				}
-			}
-			
-			for(Synapse synA : parentA.synapses){ //Sets the neuron reference in the 'In' and Out'- 
-				synA.in = findNeuron(synA.in.id, childNeurons); //-to the newly created Neurons in childNeurons
-				synA.out = findNeuron(synA.out.id, childNeurons);
-			}
-			for(Synapse synB : parentB.synapses){  //Sets the neuron reference in the 'In' and Out'- 
-				synB.in = findNeuron(synB.in.id, childNeurons);//-to the newly created Neurons in childNeurons
-				synB.out = findNeuron(synB.out.id, childNeurons);
-			}
-						
-			ArrayList<Synapse> childSynapses = new ArrayList<Synapse>();//Child Synapses for the new Network
-			
-			for(Synapse synA : parentA.synapses){//Adds all Synapses from parentA
-				childSynapses.add(new Synapse(synA));
-			}
-
-			for(Synapse synB : parentB.synapses){//Adds all Synapses from parentB that are not in parentA
-				boolean add = true;
-				for(Synapse synC : childSynapses){
-					if(synB.innovationNum == synC.innovationNum){//50% chance to change the new synape's attributes to parentB's
-						add = false;
-						if(0.5 > rnd.nextFloat()){
-							synC.weight = synB.weight;
-							synC.enabled = synB.enabled;
-						}
-					}
-				}
-				if(add){
-					childSynapses.add(new Synapse(synB));
-				}
-			}
-			
-			popCopy[i] = new Network(childNeurons, childSynapses, parentA); //Creates new Network from childNeurons and ChildSynapses			
+	Network crossover(Network parA, Network parB){
+		Network parentA = parA;//Selects parents based on fitness
+		Network parentB = parB;//Selects parents based on fitness
+		
+		ArrayList<Neuron> childNeurons = new ArrayList<Neuron>(); //Child Neurons for new Network
+		for(Neuron neuronA : parentA.neurons){ //Adds all Neurons from parentA
+			childNeurons.add(new Neuron(neuronA.type, neuronA.id));
 		}
-		population = popCopy.clone(); //Clones the popCopy to the population
+		for(Neuron neuronB : parentB.neurons){//Adds all neurons from parentB that are not in parentA
+			boolean addNeuron = true;
+			for(Neuron neuronChild : childNeurons){
+				if(neuronB.id == neuronChild.id){
+					addNeuron = false;
+				}
+			}
+			if(addNeuron){
+				childNeurons.add(new Neuron(neuronB.type, neuronB.id));
+			}
+		}
+		
+		for(Synapse synA : parentA.synapses){ //Sets the neuron reference in the 'In' and Out'- 
+			synA.in = findNeuron(synA.in.id, childNeurons); //-to the newly created Neurons in childNeurons
+			synA.out = findNeuron(synA.out.id, childNeurons);
+		}
+		for(Synapse synB : parentB.synapses){  //Sets the neuron reference in the 'In' and Out'- 
+			synB.in = findNeuron(synB.in.id, childNeurons);//-to the newly created Neurons in childNeurons
+			synB.out = findNeuron(synB.out.id, childNeurons);
+		}
+					
+		ArrayList<Synapse> childSynapses = new ArrayList<Synapse>();//Child Synapses for the new Network
+		
+		for(Synapse synA : parentA.synapses){//Adds all Synapses from parentA
+			childSynapses.add(new Synapse(synA));
+		}
+
+		for(Synapse synB : parentB.synapses){//Adds all Synapses from parentB that are not in parentA
+			boolean add = true;
+			for(Synapse synC : childSynapses){
+				if(synB.innovationNum == synC.innovationNum){//50% chance to change the new synape's attributes to parentB's
+					add = false;
+					if(0.5 > rnd.nextFloat()){
+						synC.weight = synB.weight;
+						synC.enabled = synB.enabled;
+					}
+				}
+			}
+			if(add){
+				childSynapses.add(new Synapse(synB));
+			}
+		}
+		
+		return new Network(childNeurons, childSynapses, parentA); //Creates new Network from childNeurons and ChildSynapses
 	}
 		
 	void mutate(){ //Mutates the networks in 3 ways: Weight, New Neuron, and new Synapse
@@ -141,11 +139,11 @@ public class Neat {
 		}
 	}
 	
-	void speciation(){
-		float incompatThresh = 3f;
+	void speciation(){ //Seperates the population into species
+		float incompatThresh = 0.4f; //Max distance between networks in a species
 		float killPercent = 0.05f; //Kills n% of the lowest performing population 
 		
-		for(Network n : population){
+		for(Network n : population){ //Addes each network to a specices or creates a new one
 			boolean addToSpecies = false; //Checks if network was added to a species
 			for(int i = 0; i < species.size(); i++){
 				if(distComp(n, species.get(i).get(0)) < incompatThresh){ //Check if the distance is less than the Compatibility Threshhold
@@ -162,31 +160,57 @@ public class Neat {
 		}
 		
 		for(int j = 0; j < species.size(); j++){ //Kills the lowest prefroming genomes
-			int killAmount = (species.get(j).size() * killPercent < 1) ? 1 : (int)(species.get(j).size() * killPercent); //Amount of genomes to kill
-			
-			Collections.sort(species.get(j));
-			
-			for(int k = 0; k < killAmount; k++){
-				species.get(j).remove(k);
+			if(species.get(j).size() > 1){
+				int killAmount = (species.get(j).size() * killPercent < 1) ? 1 : Math.round((species.get(j).size() * killPercent)); //Amount of genomes to kill
+				
+				Collections.sort(species.get(j));
+				
+				for(int k = 0; k < killAmount; k++){
+					species.get(j).remove(k);
+				}
 			}
 		}
 	}
 	
-	void fitnessSharing(){
-		float[] speciesFit = new float[species.size()];
-		int[] speciesReproduce = new int[species.size()];
+	void fitnessSharing(){ //Adjust the fitness of each network in each species and reproduces the species
+		float[] speciesFit = new float[species.size()]; //Array holds all the adjusted fitnesses for each species
+		int[] speciesReproduce = new int[species.size()]; //Array holds all the amount each species gets to reproduce
 		float N = 0;
 		for(int i = 0; i < species.size(); i++){
 			speciesFit[i] = adjustedFitness(species.get(i));
 			N += speciesFit[i];
 		}
 		
+		int total = 0; //Keeps track of total amount of networks to reproduce
 		for(int j = 0; j < species.size(); j++){
-			speciesReproduce[j] = (int)(speciesFit[j] / N);
+			speciesReproduce[j] = Math.round((speciesFit[j] / N) * population.length);
+			total += speciesReproduce[j];
+			System.out.println("Networks in species " + (j + 1) + ": " +speciesReproduce[j]);
 		}
+		
+		if(population.length - total > 0){ //Addes amount to a random species if total < population.length
+			speciesReproduce[rnd.nextInt(speciesReproduce.length)] += population.length - total;
+		}
+		
+		System.out.println("Max: " + max);
+		System.out.println("Min: " + min);
+		System.out.println("Max Distance: " + (max - min));
+		
+		Network[] popCopy = new Network[population.length];
+		int index = 0;
+		for(int k = 0; k < speciesReproduce.length; k++){ //Reproduces the networks based on species
+			for(int l = 0; l < speciesReproduce[k]; l++){
+				if(index <= popCopy.length - 1){
+					popCopy[index] = crossover(species.get(k).get(rnd.nextInt(species.get(k).size())),species.get(k).get(rnd.nextInt(species.get(k).size())));
+					index++;
+				}
+			}
+		}
+		
+		population = popCopy.clone();
 	}
 	
-	float adjustedFitness(ArrayList<Network> speciesO){
+	float adjustedFitness(ArrayList<Network> speciesO){ //Adjusted the fitness of each species
 		float sum = 0;
 		for(int i = 0; i < speciesO.size(); i++){
 			sum += speciesO.get(i).fitness / speciesO.size();
@@ -206,7 +230,7 @@ public class Neat {
 		Network larger;
 		Network smaller;
 		
-		if(a.synapses.size() > b.synapses.size()){
+		if(a.synapses.size() > b.synapses.size()){//Assigns the larger and smaller networks
 			larger = a;
 			smaller = b;
 			N = a.synapses.size();
@@ -216,7 +240,7 @@ public class Neat {
 			N = b.synapses.size();
 		}
 		
-		for(int i = 0; i < larger.synapses.size(); i++){
+		for(int i = 0; i < larger.synapses.size(); i++){ //Calculates the aveWeightDiff and disjointed genes
 			if(i < smaller.synapses.size()){ //Adds all disjointed genes and calcs avgWeightDiff
 				if(larger.synapses.get(i).innovationNum == smaller.synapses.get(i).innovationNum){ //Checks if same synapse
 					avgWeightDiff += larger.synapses.get(i).weight - smaller.synapses.get(i).weight;
@@ -233,7 +257,12 @@ public class Neat {
 		avgWeightDiff /= matchingGenes;
 		
 		float dist = (c1 * disjoint) / N + c3 * avgWeightDiff; //Distance of compatibility
-		System.out.println(dist);
+			if(dist < min){ //Varible to keep track of the min and max distances between networks
+				min = dist;
+			}
+			if(dist > max){
+				max = dist;
+			}
 		return dist;
 	}
 	
